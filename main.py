@@ -28,6 +28,7 @@ def dynam(u, v, p, p_next, h, t, dx, dxc, dy, dt):
     """
     Find the momentum gradient at the edges for the change in pressure
     """
+    dym = dy * radius
     du = np.zeros((numy, numx))
     dv = np.zeros((numy, numx))
     spa = np.zeros((numy, numx))
@@ -52,13 +53,17 @@ def dynam(u, v, p, p_next, h, t, dx, dxc, dy, dt):
         for x in range(numx ):
             maxp = max(maxp, p[y][x])
             minp = min(minp, p[y][x])
-            convergence = 0
-            convergence += du[y][x-1] 
-            convergence -= du[y][x] 
-            convergence += dv[y-1][x] 
-            convergence -= dv[y][x]
+            #convergence = 0
+            #convergence += du[y][x-1] 
+            #convergence -= du[y][x] 
+            #convergence += dv[y-1][x] 
+            #convergence -= dv[y][x]
 
-            change =  (dt * convergence /(dx[y] * dy * radius))
+            #change =  (dt * convergence /(dx[y] * dy * radius))
+
+            ew = (du[y][x-1] - du[y][x]) / 2 / dx[y]
+            ns = (dv[y-1][x] - dv[y][x]) / 2 / (dy * radius)
+            change = ew + ns
 
             maxconv = max(maxconv, change)
 
@@ -76,12 +81,17 @@ def dynam(u, v, p, p_next, h, t, dx, dxc, dy, dt):
         for x in range(-1, numx - 1):
             p_east = (p[y][x+1] + p[y+1][x+1]) / 2
             p_west = (p[y][x] + p[y+1][x]) / 2
+            p_south = (p[y+1][x] + p[y+1][x+1]) / 2
+            p_north = (p[y][x] + p[y][x+1]) / 2
             g_east = (h[y][x+1] + h[y+1][x+1]) / 2
             g_west = (h[y][x] + h[y+1][x]) / 2
+            g_south = (h[y+1][x] + h[y+1][x+1]) / 2
+            g_north = (h[y][x] + h[y][x+1]) / 2
             #du[y][x] = (p_east + p_west) * (g_west - g_east)
             change = (g_west - g_east) / dxc[y]
             maxg = max(maxg, change)
             du[y][x] = change
+            dv[y][x] = (g_north - g_south) / dym
 
             #dv[y][x] = (v[y][x-1] + v[y][x]) * (p[y][x] + p[y+1][x])
 
@@ -94,10 +104,12 @@ def dynam(u, v, p, p_next, h, t, dx, dxc, dy, dt):
             maxc = max(maxc, change)
             minc = min(minc, change)
             du[y][x] += change
+            dv[y][x] += (p_north - p_south) / dym
 
 
     # apply the change in velocity
     u += du * dt
+    v += dv * dt
 
     print(maxu, maxp, maxc, maxconv)
     print(minu, minp, minc, maxg)
@@ -156,10 +168,11 @@ def main():
 
 
     # make a random peak 
-    height[numy // 3, numx // 3] = 200
+    #height[numy // 3, numx // 3] = 200
 
     # make an initial push
     u[numy // 2, numx // 2] = 10
+    u[numy // 2, numx // 3] = -10
 
 
     # geometry has been calculated. set up the initial pressure
@@ -170,17 +183,19 @@ def main():
 
         
     fig,ax = plt.subplots(1,1)
-    image = ax.imshow(u, cmap='gray')
+    image = ax.imshow((u ** 2 + v ** 2) ** (1/2), cmap='gray')
     fig.canvas.draw()
     plt.show(block=False)
-    for i in range(100):
+    i = 0
+    while True:
+        i+=1
         print("frame", i)
         # run dynam once 
         dynam(u, v, pressure, p_next, height, temp, dx, dxc, dye, timestep)
         pressure = p_next
 
 
-        image.set_data(pressure)
+        image.set_data((u ** 2 + v ** 2) ** (1/2))
         fig.canvas.draw()
         plt.draw()
         #time.sleep(5)
