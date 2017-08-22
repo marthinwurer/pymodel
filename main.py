@@ -31,7 +31,7 @@ torroid = False
 
 
 
-def dynam(u, v, du, dv, dt):
+def dynam(u, v, un, vn, du, dv, dt):
 
 
     """
@@ -45,8 +45,10 @@ def dynam(u, v, du, dv, dt):
 
 
     # apply the change in velocity
-    u += du * dt
-    v += dv * dt
+    np.copyto(un, u)
+    np.copyto(vn, v)
+    un += du * dt
+    vn += dv * dt
 
 def aflux(u, v, p, pu, pv):
     for y in range(-1,numy - 1): # don't do the last row, north-south there should be zero
@@ -78,7 +80,7 @@ def advecm(p, pu, pv, p_next, convergence, dx, dym, dt):
 
             #maxconv = max(maxconv, change)
 
-            p_next[y][x] = p[y][x] + change 
+            p_next[y][x] = p[y][x] + change * dt
 
 
 def advectracer(pu, pv, tracer, tracer_next, dx, dym, dt):
@@ -335,21 +337,20 @@ def main():
     # geometry has been calculated. set up the initial pressure
     for y in range(numy):
         for x in range(numx):
-            temp[y][x] = 273.15
-            pressure[y][x] = 1013.25 / exp( gravity * height[y][x] / ( R_dry * temp[y][x]))
-            p_next[y][x] = pressure[y][x]
+            p[y][x] = 1013.25 / exp( gravity * height[y][x] / ( R_dry * t[y][x]))
+            pp1[y][x] = p[y][x]
 
-    p_next[0][0] = 1007.0
-    p_next[0][1] = 1020.0
+    pp1[0][0] = 1007.0
+    pp1[0][1] = 1020.0
 
-    tracer_next[0][0] = 25
-    tracer_next[0][1] = 0
+    tracer_p1[0][0] = 25
+    tracer_p1[0][1] = 0
 
     #((u ** 2 + v ** 2) ** (1/2))
 
     fig,ax = plt.subplots(1,1)
     #image = ax.imshow(((u ** 2 + v ** 2) ** (1/2)), cmap='gray')
-    image = ax.imshow(tracer_next, cmap='gray')
+    image = ax.imshow(tracer_p1, cmap='gray')
     fig.canvas.draw()
     plt.show(block=False)
     i = -1
@@ -364,23 +365,22 @@ def main():
             # ut+Δt = ut−Δt + 2Δt · f(ut)
 
             # if it is an initial forward step, do one timestep
-            if( frame % 24 == 0):
-
-            aflux(u, v, pressure, pu, pv)
-            advecm(pressure, pu, pv, p_next, convergence, dx, dym, dt)
-            advectracer(pu, pv, tracer, tracer_next, dx, dym, dt)
-            pgf(du, dv, pressure, p_center, height, temp, spa, dxc, dym)
-            advecv(u, v, du, dv, pressure, dxc, dym, dt)
-            coriolis(u, v, du, dv, latc, dt)
-            dynam(u, v, du, dv, timestep)
+            if( i % 24 == 0):
+                aflux(u, v, p, pu, pv)
+                advecm(p, pu, pv, pp1, convergence, dx, dym, dt)
+                advectracer(pu, pv, tracer, tracer_p1, dx, dym, dt)
+                pgf(du, dv, p, p_center, height, t, spa, dxc, dym)
+                advecv(u, v, du, dv, p, dxc, dym, dt)
+                coriolis(u, v, du, dv, latc, dt)
+                dynam(u, v, up1, vp1, du, dv, timestep)
 
             # do crappy evaporation and precipitation
             for y in range(numy): 
                 for x in range(numx ):
-                    if (tracer_next[y][x] > 25):
-                        tracer_next[y][x] = 25.0
-                    elif tracer_next[y][x] < 12:
-                        tracer_next[y][x] += 0.5 / dym
+                    if (tracer_p1[y][x] > 25):
+                        tracer_p1[y][x] = 25.0
+                    elif tracer_p1[y][x] < 12:
+                        tracer_p1[y][x] += 0.5 / dym
 
         except FloatingPointError:
             #print(u)
@@ -389,8 +389,8 @@ def main():
             #print(p_next)
             exit()
 
-        pressure, p_next = p_next, pressure
-        tracer, tracer_next = tracer_next, tracer
+        p, pp1 = pp1, p
+        tracer, tracer_p1 = tracer_p1, tracer
 
         # diagnostics: compute total momentum
         m = p_center * ((u ** 2 + v ** 2) ** (1/2))
