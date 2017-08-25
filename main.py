@@ -8,6 +8,7 @@ import numpy as np
 from math import *
 from matplotlib import animation
 import time
+import traceback
 
 radius = 6371000.0
 #radius = 637100.0
@@ -16,6 +17,7 @@ R_dry = 287.1
 cp_dry = 1004.0
 kappa = 0.286
 r_rate_earth = 7.292115e-5 # rads/sec, rotation rate of earth (sidereal day)
+#r_rate_earth = 0.0
 coriolis_m = 2 * r_rate_earth # will need to be multiplied by the sin of the latitude
 # whooo globals
 #numx = 36
@@ -24,8 +26,8 @@ numx = 72
 numy = 36
 #numx = 360
 #numy = 180
-#timestep = 900.0
-timestep = 120.0
+timestep = 900.0
+#timestep = 120.0
 #torroid = True
 torroid = False
 
@@ -80,6 +82,8 @@ def advecm(p, pu, pv, p_next, convergence, dx, dym, dt):
 
             #maxconv = max(maxconv, change)
 
+            convergence[y][x] = change
+
             p_next[y][x] = p[y][x] + change * dt
 
 
@@ -89,10 +93,10 @@ def advectracer(pu, pv, tracer, tracer_next, dx, dym, dt):
     for y in range(-1, numy - 1): 
         for x in range(-1, numx - 1):
             # compute the amount moved in each direction.
-            tr_east = pu[y][x] * tracer[y][x] / dx[y]
-            tr_west = -pu[y][x-1] * tracer[y][x] / dx[y]
-            tr_north = -pv[y][x] * tracer[y][x] / dx[y]
-            tr_south = pv[y-1][x] * tracer[y][x] / dx[y]
+            tr_east = pu[y][x] * tracer[y][x] / dx[y] * dt
+            tr_west = -pu[y][x-1] * tracer[y][x] / dx[y] * dt
+            tr_north = -pv[y][x] * tracer[y][x] / dx[y] * dt
+            tr_south = pv[y-1][x] * tracer[y][x] / dx[y] * dt
 
             # make sure that you only do the ones that are positive
             # and make sure that you only move 1/4 of the tracer in any direction
@@ -156,7 +160,7 @@ def pgf(du, dv, p, p_c, h, t, spa, dxc, dym):
 
 
 
-def advecv(u, v, du, dv, p, dxc, dym, dt):
+def advecv(u, v, du, dv, p, dxc, dym):
     # do advection of momentum
     for y in range(-1, numy - 1): 
         for x in range(-1, numx - 1):
@@ -192,7 +196,7 @@ def advecv(u, v, du, dv, p, dxc, dym, dt):
             dv[y+1][x] += fluxv
 
 
-def coriolis(u, v, du, dv, latc, dt):
+def coriolis(u, v, du, dv, latc):
 
     for y in range(numy): 
         for x in range(numx ):
@@ -201,12 +205,22 @@ def coriolis(u, v, du, dv, latc, dt):
             dv[y][x] -= u[y][x] * f
 
 
-def friction(u, v, du, dv, p, spa):
+def friction(u, v, du, dv, p, spa, dxc, dym, dt):
     vel = ((u ** 2 + v ** 2) ** (1/2))
     drag_coef_flat = 0.005
     for y in range(numy): 
         for x in range(numx):
-            drag = p[y][x] / spa[y][x] * (vel[y][x] ** 2)
+            drag = drag_coef_flat * (vel[y][x] ** 2)# * spa[y][x]
+            if drag > vel[y][x]:
+                coeff = 1
+            else:
+                coeff = (drag / (vel[y][x] + 0.000001))
+            if x == 0:
+                print(coeff, u[y][x] * coeff, v[y][x] * coeff)
+            du[y][x] -= (u[y][x] * coeff) / dt
+            dv[y][x] -= (v[y][x] * coeff) / dt
+
+
 
 
 
@@ -260,8 +274,6 @@ def main():
     dv = np.zeros((numy, numx)) 
     spa = np.zeros((numy, numx))
 
-    dt = timestep
-    dt2 = dt * 2
 
     
     # calculate geometry
@@ -294,6 +306,7 @@ def main():
         # torroid
         for ii in range(numy):
             dx[ii] = dxe * radius
+    print(lat)
     print(dx)
 
 
@@ -309,10 +322,12 @@ def main():
             dxc[ii] = cos(lat_cur) * dxe * radius
         #    print(lat_cur/pi * 180, dxc[ii], dxc[ii])
         dxc[-1] = dxc[1] # prevent explosions
+        latc[-1] = 0
     else:
         # torroid
         for ii in range(numy):
             dxc[ii] = dxe * radius
+    print(latc)
     print(dxc)
 
 
@@ -329,9 +344,15 @@ def main():
 
     # make an initial push
     #u[numy // 3, numx // 2] = -10
-    u[numy // 3, numx // 3] = 10
-    u[numy // 3 * 2, numx // 3] = -10
+    #u[numy // 3, numx // 3] = 10
+    #u[numy // 3 * 2, numx // 3] = -10
     v[numy // 3, numx // 2] = 10
+
+    for i in range(numx):
+        u[numy // 2][i] = 10
+        #u[numy // 2 + 1][i] = 10
+    u[numy // 2][9] = 9
+    
 
 
     # geometry has been calculated. set up the initial pressure
@@ -346,11 +367,15 @@ def main():
     tracer_p1[0][0] = 25
     tracer_p1[0][1] = 0
 
+    dt = timestep
+    dt2 = dt * 2
+
     #((u ** 2 + v ** 2) ** (1/2))
 
     fig,ax = plt.subplots(1,1)
     #image = ax.imshow(((u ** 2 + v ** 2) ** (1/2)), cmap='gray')
-    image = ax.imshow(tracer_p1, cmap='gray')
+    #image = ax.imshow(tracer_p1, cmap='gray')
+    image = ax.imshow(pp1, cmap='gray')
     fig.canvas.draw()
     plt.show(block=False)
     i = -1
@@ -365,14 +390,120 @@ def main():
             # ut+Δt = ut−Δt + 2Δt · f(ut)
 
             # if it is an initial forward step, do one timestep
-            if( i % 24 == 0):
+            #int_type = True
+            int_type = 0
+
+            #friction(u, v, du, dv, p, spa)
+            if int_type == 0:
+                # forward step
                 aflux(u, v, p, pu, pv)
                 advecm(p, pu, pv, pp1, convergence, dx, dym, dt)
                 advectracer(pu, pv, tracer, tracer_p1, dx, dym, dt)
                 pgf(du, dv, p, p_center, height, t, spa, dxc, dym)
-                advecv(u, v, du, dv, p, dxc, dym, dt)
-                coriolis(u, v, du, dv, latc, dt)
+                advecv(u, v, du, dv, p, dxc, dym)
+                #coriolis(u, v, du, dv, latc)
+                #friction(u, v, du, dv, p, spa, dxc, dym, dt)
                 dynam(u, v, up1, vp1, du, dv, timestep)
+
+                # do array swapping
+                um1, u, up1 = u, up1, um1
+                vm1, v, vp1 = v, vp1, vm1
+                p, pp1 = pp1, p
+                tracer, tracer_p1 = tracer_p1, tracer
+
+            elif int_type == 1:
+                # leapfrog
+                if( i % 24 == 0):
+                    aflux(u, v, p, pu, pv)
+                    advecm(p, pu, pv, pp1, convergence, dx, dym, dt)
+                    advectracer(pu, pv, tracer, tracer_p1, dx, dym, dt)
+                    pgf(du, dv, p, p_center, height, t, spa, dxc, dym)
+                    advecv(u, v, du, dv, p, dxc, dym)
+                    #coriolis(u, v, du, dv, latc)
+                    dynam(u, v, up1, vp1, du, dv, timestep)
+
+                    # do array swapping
+                    um1, u, up1 = u, up1, um1
+                    vm1, v, vp1 = v, vp1, vm1
+                    p, pp1 = pp1, p
+                    tracer, tracer_p1 = tracer_p1, tracer
+                else:
+                    aflux(u, v, p, pu, pv)
+                    advecm(p, pu, pv, pp1, convergence, dx, dym, dt)
+                    advectracer(pu, pv, tracer, tracer_p1, dx, dym, dt)
+                    pgf(du, dv, p, p_center, height, t, spa, dxc, dym)
+                    advecv(u, v, du, dv, p, dxc, dym)
+                    #coriolis(u, v, du, dv, latc)
+                    dynam(um1, vm1, up1, vp1, du, dv, dt2)
+
+                    # array swapping
+                    um1, u, up1 = u, up1, um1
+                    vm1, v, vp1 = v, vp1, vm1
+                    p, pp1 = pp1, p
+                    tracer, tracer_p1 = tracer_p1, tracer
+            elif int_type == 2:
+                # backward euler
+                dtthird = dt * 2/3
+                aflux(u, v, p, pu, pv)
+                advecm(p, pu, pv, pm1, convergence, dx, dym, dtthird)
+                advectracer(pu, pv, tracer, tracer_p1, dx, dym, dtthird)
+                pgf(du, dv, p, p_center, height, t, spa, dxc, dym)
+                advecv(u, v, du, dv, p, dxc, dym)
+                #coriolis(u, v, du, dv, latc)
+                dynam(u, v, um1, vm1, du, dv, dtthird)
+
+                # do the second step now
+                aflux(um1, vm1, pm1, pu, pv)
+                advecm(p, pu, pv, pp1, convergence, dx, dym, dt)
+                advectracer(pu, pv, tracer, tracer_p1, dx, dym, dt)
+                pgf(du, dv, pm1, p_center, height, t, spa, dxc, dym)
+                advecv(um1, vm1, du, dv, pm1, dxc, dym)
+                #coriolis(um1, vm1, du, dv, latc)
+                dynam(u, v, up1, vp1, du, dv, timestep)
+
+                um1, u, up1 = u, up1, um1
+                vm1, v, vp1 = v, vp1, vm1
+                p, pp1 = pp1, p
+                tracer, tracer_p1 = tracer_p1, tracer
+
+
+            else:
+                # DOUBLE backward euler
+                dtthird = dt * 2/3
+                aflux(u, v, p, pu, pv)
+                advecm(p, pu, pv, pm1, convergence, dx, dym, dtthird)
+                advectracer(pu, pv, tracer, tracer_p1, dx, dym, dtthird)
+                pgf(du, dv, p, p_center, height, t, spa, dxc, dym)
+                advecv(u, v, du, dv, p, dxc, dym)
+                #coriolis(u, v, du, dv, latc)
+                dynam(u, v, um1, vm1, du, dv, dtthird)
+
+                # do the second step now
+                aflux(um1, vm1, pm1, pu, pv)
+                advecm(p, pu, pv, pp1, convergence, dx, dym, dt)
+                advectracer(pu, pv, tracer, tracer_p1, dx, dym, dt)
+                pgf(du, dv, pm1, p_center, height, t, spa, dxc, dym)
+                advecv(um1, vm1, du, dv, pm1, dxc, dym)
+                #coriolis(um1, vm1, du, dv, latc)
+                dynam(u, v, up1, vp1, du, dv, timestep)
+
+                um1, up1 = up1, um1
+                vm1, vp1 = vp1, vm1
+                pm1, pp1 = pp1, pm1
+
+                # do ANOTHER backward euler step!
+                aflux(um1, vm1, pm1, pu, pv)
+                advecm(p, pu, pv, pp1, convergence, dx, dym, dt)
+                advectracer(pu, pv, tracer, tracer_p1, dx, dym, dt)
+                pgf(du, dv, pm1, p_center, height, t, spa, dxc, dym)
+                advecv(um1, vm1, du, dv, pm1, dxc, dym)
+                #coriolis(um1, vm1, du, dv, latc)
+                dynam(u, v, up1, vp1, du, dv, timestep)
+
+                um1, u, up1 = u, up1, um1
+                vm1, v, vp1 = v, vp1, vm1
+                p, pp1 = pp1, p
+                tracer, tracer_p1 = tracer_p1, tracer
 
             # do crappy evaporation and precipitation
             for y in range(numy): 
@@ -387,21 +518,22 @@ def main():
             #print(v)
             #print(pressure)
             #print(p_next)
+            traceback.print_exc()
             exit()
 
-        p, pp1 = pp1, p
-        tracer, tracer_p1 = tracer_p1, tracer
 
         # diagnostics: compute total momentum
         m = p_center * ((u ** 2 + v ** 2) ** (1/2))
 
 
 
-        print( np.amax(u), np.amax(v), np.amax(du), np.amax(dv), np.sum(m))
+        print( np.amax(u), np.amax(v), np.amax(du), np.amax(dv), np.amax(convergence), np.sum(m))
+        print(np.amin(p), np.amax(p), np.amax(spa))
 
 
-        image.set_data(((u ** 2 + v ** 2) ** (1/2)))
+        #image.set_data(((u ** 2 + v ** 2) ** (1/2)))
         #image.set_data(tracer)
+        image.set_data(p)
         fig.canvas.draw()
         #plt.draw()
         #time.sleep(5)
