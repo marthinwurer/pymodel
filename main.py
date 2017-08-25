@@ -20,10 +20,10 @@ r_rate_earth = 7.292115e-5 # rads/sec, rotation rate of earth (sidereal day)
 #r_rate_earth = 0.0
 coriolis_m = 2 * r_rate_earth # will need to be multiplied by the sin of the latitude
 # whooo globals
-#numx = 36
-#numy = 24
-numx = 72
-numy = 36
+numx = 36
+numy = 24
+#numx = 72
+#numy = 36
 #numx = 360
 #numy = 180
 timestep = 900.0
@@ -79,12 +79,14 @@ def advecm(p, pu, pv, p_next, convergence, dx, dym, dt):
             ew = (pu[y][x-1] - pu[y][x]) / 2 / dx[y]
             ns = (pv[y-1][x] - pv[y][x]) / 2 / dym
             change = ew + ns
+            conv =(pu[y][x-1] - pu[y][x] + pv[y-1][x] - pv[y][x])
 
             #maxconv = max(maxconv, change)
 
             convergence[y][x] = change
 
             p_next[y][x] = p[y][x] + change * dt
+            #p_next[y][x] = p[y][x] + (conv * dt / (dx[y] * dym))
 
 
 def advectracer(pu, pv, tracer, tracer_next, dx, dym, dt):
