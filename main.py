@@ -20,31 +20,20 @@ r_rate_earth = 7.292115e-5 # rads/sec, rotation rate of earth (sidereal day)
 #r_rate_earth = 0.0
 coriolis_m = 2 * r_rate_earth # will need to be multiplied by the sin of the latitude
 # whooo globals
-numx = 36
-numy = 24
-#numx = 72
-#numy = 36
+#numx = 36
+#numy = 24
+numx = 72
+numy = 36
 #numx = 360
 #numy = 180
-timestep = 900.0
-#timestep = 120.0
-#torroid = True
-torroid = False
+#timestep = 900.0
+timestep = 120.0
+torroid = True
+#torroid = False
 
 
 
 def dynam(u, v, un, vn, du, dv, dt):
-
-
-    """
-    Find the momentum gradient at the edges for the change in pressure
-    """
-
-
-
-
-
-
 
     # apply the change in velocity
     np.copyto(un, u)
@@ -76,8 +65,8 @@ def advecm(p, pu, pv, p_next, convergence, dx, dym, dt):
 
             #change =  (dt * convergence /(dx[y] * dy * radius))
 
-            ew = (pu[y][x-1] - pu[y][x]) / 2 / dx[y]
-            ns = (pv[y-1][x] - pv[y][x]) / 2 / dym
+            ew = (pu[y][x-1] - pu[y][x]) / dx[y]
+            ns = (pv[y-1][x] - pv[y][x]) / dym
             change = ew + ns
             conv =(pu[y][x-1] - pu[y][x] + pv[y-1][x] - pv[y][x])
 
@@ -223,6 +212,23 @@ def friction(u, v, du, dv, p, spa, dxc, dym, dt):
             dv[y][x] -= (v[y][x] * coeff) / dt
 
 
+def rad(t, tp1, lat, lon, time):
+    # find the center of sunlight
+    # total time in seconds % day length to find day seconds
+    # day seconds / seconds in day to find longitude proportion
+    # multiply by 2pi to get angle around earth
+    ds = time % 86400
+    cx = ds / 86400.0 * 2 * pi
+
+    for y in range(numy): 
+        for x in range(numx):
+            tlon = x * lon - cx
+            inc = cos(lat[y]) * cos(tlon)
+            tp1[y][x] = t[y][x] + inc
+
+
+
+
 
 
 
@@ -350,9 +356,9 @@ def main():
     #u[numy // 3 * 2, numx // 3] = -10
     v[numy // 3, numx // 2] = 10
 
-    for i in range(numx):
-        u[numy // 2][i] = 10
-        #u[numy // 2 + 1][i] = 10
+    #for i in range(numx):
+    #    u[numy // 2][i] = 10
+    #    #u[numy // 2 + 1][i] = 10
     u[numy // 2][9] = 9
     
 
@@ -363,8 +369,8 @@ def main():
             p[y][x] = 1013.25 / exp( gravity * height[y][x] / ( R_dry * t[y][x]))
             pp1[y][x] = p[y][x]
 
-    pp1[0][0] = 1007.0
-    pp1[0][1] = 1020.0
+    pp1[0][0] = 1100.0
+    pp1[0][1] = 900.0
 
     tracer_p1[0][0] = 25
     tracer_p1[0][1] = 0
@@ -401,6 +407,7 @@ def main():
                 aflux(u, v, p, pu, pv)
                 advecm(p, pu, pv, pp1, convergence, dx, dym, dt)
                 advectracer(pu, pv, tracer, tracer_p1, dx, dym, dt)
+                advectracer(pu, pv, t, tp1, dx, dym, dt)
                 pgf(du, dv, p, p_center, height, t, spa, dxc, dym)
                 advecv(u, v, du, dv, p, dxc, dym)
                 #coriolis(u, v, du, dv, latc)
@@ -412,6 +419,7 @@ def main():
                 vm1, v, vp1 = v, vp1, vm1
                 p, pp1 = pp1, p
                 tracer, tracer_p1 = tracer_p1, tracer
+                t, tp1 = tp1, t
 
             elif int_type == 1:
                 # leapfrog
