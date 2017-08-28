@@ -212,19 +212,21 @@ def friction(u, v, du, dv, p, spa, dxc, dym, dt):
             dv[y][x] -= (v[y][x] * coeff) / dt
 
 
-def rad(t, tp1, lat, lon, time):
+def rad(t, tp1, lat, lon, time, dt):
     # find the center of sunlight
     # total time in seconds % day length to find day seconds
     # day seconds / seconds in day to find longitude proportion
     # multiply by 2pi to get angle around earth
     ds = time % 86400
     cx = ds / 86400.0 * 2 * pi
+    
+    hr = 0
 
     for y in range(numy): 
         for x in range(numx):
             tlon = x * lon - cx
-            inc = cos(lat[y]) * cos(tlon)
-            tp1[y][x] = t[y][x] + inc
+            inc = cos(lat[y]) * cos(tlon) * hr
+            tp1[y][x] = t[y][x] + inc * dt
 
 
 
