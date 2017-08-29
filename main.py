@@ -16,18 +16,21 @@ gravity = 9.8
 R_dry = 287.1
 cp_dry = 1004.0
 kappa = 0.286
+ptop = 10.0 # the pressure at the top of the atmosphere
 r_rate_earth = 7.292115e-5 # rads/sec, rotation rate of earth (sidereal day)
 #r_rate_earth = 0.0
 coriolis_m = 2 * r_rate_earth # will need to be multiplied by the sin of the latitude
+sigma = [1.0] # proportion of pressure at that layer
+dsig = [1.0] # change from this pressure layer to the one above it
 # whooo globals
-#numx = 36
-#numy = 24
-numx = 72
-numy = 36
+numx = 36
+numy = 24
+#numx = 72
+#numy = 36
 #numx = 360
 #numy = 180
-#timestep = 900.0
-timestep = 120.0
+timestep = 900.0
+#timestep = 120.0
 torroid = True
 #torroid = False
 
@@ -48,6 +51,10 @@ def aflux(u, v, p, pu, pv):
             #minu = min(minu, u[y][x])
             pu[y][x] = (u[y-1][x] + u[y][x]) * (p[y][x] + p[y][x+1])
             pv[y][x] = (v[y][x-1] + v[y][x]) * (p[y][x] + p[y+1][x])
+
+            if y == -1:
+                v[y][x] = 0
+                pv[y][x] = 0
 
 
 def advecm(p, pu, pv, p_next, convergence, dx, dym, dt):
@@ -112,7 +119,7 @@ def pgf(du, dv, p, p_c, h, t, spa, dxc, dym):
     ## compute spa now
     for y in range(numy): 
         for x in range(numx ):
-            spa[y][x] = p[y][x]**kappa * t[y][x] * R_dry
+            spa[y][x] = (p[y][x] + ptop)**kappa * t[y][x] * R_dry
 
 
     # do geopotential now
@@ -229,7 +236,35 @@ def rad(t, tp1, lat, lon, time, dt):
             tp1[y][x] = t[y][x] + inc * dt
 
 
+def sdrag(u, v, p, p_center, t, dt):
+    """
+    Stratospheric drag (ported from GCMII)
+    """
+    #c1 = 0.0005
+    c1 = 0.0005
+    #c2 = 0.00005
+    c2 = 50
+    vel = ((u ** 2 + v ** 2) ** (1/2))
+    maxp = 0.0
+    for y in range(numy): 
+        for x in range(numx):
+            pk = (p[y][x] + ptop) ** kappa
+            rho = ptop / (R_dry * t[y][x] * pk) # density at top of atmosphere
+            cdn = c1 + c2 * vel[y][x]
+            prop = dt * rho * cdn * vel[y][x] * gravity / (p_center[y][x])
+            maxp = max(maxp, prop)
+            prop = 1.0 - prop
+            if prop < 0:
+                prop = 0.0
+            u[y][x] *= prop
+            v[y][x] *= prop
+    print("maxp", maxp)
+                
 
+
+
+
+    
 
 
 
@@ -356,23 +391,25 @@ def main():
     #u[numy // 3, numx // 2] = -10
     #u[numy // 3, numx // 3] = 10
     #u[numy // 3 * 2, numx // 3] = -10
-    v[numy // 3, numx // 2] = 10
+    #v[numy // 3, numx // 2] = 10
 
     #for i in range(numx):
     #    u[numy // 2][i] = 10
     #    #u[numy // 2 + 1][i] = 10
-    u[numy // 2][9] = 9
+    #u[numy // 2][9] = 9
     
 
 
     # geometry has been calculated. set up the initial pressure
     for y in range(numy):
         for x in range(numx):
-            p[y][x] = 1013.25 / exp( gravity * height[y][x] / ( R_dry * t[y][x]))
+            p[y][x] = 1013.25 / exp( gravity * height[y][x] / ( R_dry * t[y][x])) - ptop
             pp1[y][x] = p[y][x]
 
     pp1[0][0] = 1100.0
     pp1[0][1] = 900.0
+
+    p[numy // 3 * 2, numx // 3] -= 10
 
     tracer_p1[0][0] = 25
     tracer_p1[0][1] = 0
@@ -409,11 +446,12 @@ def main():
                 aflux(u, v, p, pu, pv)
                 advecm(p, pu, pv, pp1, convergence, dx, dym, dt)
                 advectracer(pu, pv, tracer, tracer_p1, dx, dym, dt)
-                advectracer(pu, pv, t, tp1, dx, dym, dt)
+                #advectracer(pu, pv, t, tp1, dx, dym, dt)
                 pgf(du, dv, p, p_center, height, t, spa, dxc, dym)
                 advecv(u, v, du, dv, p, dxc, dym)
                 #coriolis(u, v, du, dv, latc)
                 #friction(u, v, du, dv, p, spa, dxc, dym, dt)
+                sdrag(u, v, p, p_center, t, dt)
                 dynam(u, v, up1, vp1, du, dv, timestep)
 
                 # do array swapping
