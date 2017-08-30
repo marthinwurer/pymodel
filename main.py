@@ -20,11 +20,12 @@ ptop = 10.0 # the pressure at the top of the atmosphere
 r_rate_earth = 7.292115e-5 # rads/sec, rotation rate of earth (sidereal day)
 #r_rate_earth = 0.0
 coriolis_m = 2 * r_rate_earth # will need to be multiplied by the sin of the latitude
-sigma = [1.0] # proportion of pressure at that layer
+sigma = [0.5] # proportion of pressure at that layer
 dsig = [1.0] # change from this pressure layer to the one above it
 # whooo globals
 numx = 36
 numy = 24
+lay = 0
 #numx = 72
 #numy = 36
 #numx = 360
@@ -49,10 +50,11 @@ def aflux(u, v, p, pu, pv):
         for x in range(-1, numx - 1):
             #maxu = max(maxu, u[y][x])
             #minu = min(minu, u[y][x])
-            pu[y][x] = (u[y-1][x] + u[y][x]) * (p[y][x] + p[y][x+1])
-            pv[y][x] = (v[y][x-1] + v[y][x]) * (p[y][x] + p[y+1][x])
+            pu[y][x] = (u[y-1][x] + u[y][x]) * (p[y][x] + p[y][x+1]) / 4
+            pv[y][x] = (v[y][x-1] + v[y][x]) * (p[y][x] + p[y+1][x]) / 4
 
             if y == -1:
+                u[y][x] = 0
                 v[y][x] = 0
                 pv[y][x] = 0
 
@@ -390,8 +392,8 @@ def main():
     # make an initial push
     #u[numy // 3, numx // 2] = -10
     #u[numy // 3, numx // 3] = 10
-    #u[numy // 3 * 2, numx // 3] = -10
-    #v[numy // 3, numx // 2] = 10
+    u[numy // 3 * 2, numx // 3] = -10
+    v[numy // 3, numx // 2] = 10
 
     #for i in range(numx):
     #    u[numy // 2][i] = 10
@@ -409,7 +411,7 @@ def main():
     pp1[0][0] = 1100.0
     pp1[0][1] = 900.0
 
-    p[numy // 3 * 2, numx // 3] -= 10
+    #p[numy // 3 * 2, numx // 3] -= 10
 
     tracer_p1[0][0] = 25
     tracer_p1[0][1] = 0
@@ -421,13 +423,15 @@ def main():
 
     fig,ax = plt.subplots(1,1)
     #image = ax.imshow(((u ** 2 + v ** 2) ** (1/2)), cmap='gray')
-    #image = ax.imshow(tracer_p1, cmap='gray')
-    image = ax.imshow(pp1, cmap='gray')
+    image = ax.imshow(tracer_p1, cmap='gray')
+    #image = ax.imshow(pp1, cmap='gray')
     fig.canvas.draw()
     plt.show(block=False)
     i = -1
     while True:
         i+=1
+        print()
+        print()
         print()
         print("frame", i)
         # run dynam once 
@@ -582,8 +586,8 @@ def main():
 
 
         #image.set_data(((u ** 2 + v ** 2) ** (1/2)))
-        #image.set_data(tracer)
-        image.set_data(p)
+        image.set_data(tracer)
+        #image.set_data(p)
         fig.canvas.draw()
         #plt.draw()
         #time.sleep(5)
