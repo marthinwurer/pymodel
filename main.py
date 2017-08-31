@@ -379,7 +379,7 @@ def main():
 
 
     # make a random peak 
-    #height[numy // 3, numx // 3] = 200
+    height[numy // 3, numx // 3] = 200
     #height[numy // 4 * 3, numx // 3] = 2
 
     # make walls at the north and south as well as the west
