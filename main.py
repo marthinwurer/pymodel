@@ -32,8 +32,8 @@ lay = 0
 #numy = 180
 timestep = 900.0
 #timestep = 120.0
-torroid = True
-#torroid = False
+#torroid = True
+torroid = False
 
 
 
@@ -423,8 +423,8 @@ def main():
 
     fig,ax = plt.subplots(1,1)
     #image = ax.imshow(((u ** 2 + v ** 2) ** (1/2)), cmap='gray')
-    image = ax.imshow(tracer_p1, cmap='gray')
-    #image = ax.imshow(pp1, cmap='gray')
+    #image = ax.imshow(tracer_p1, cmap='gray')
+    image = ax.imshow(pp1, cmap='gray')
     fig.canvas.draw()
     plt.show(block=False)
     i = -1
@@ -453,7 +453,7 @@ def main():
                 #advectracer(pu, pv, t, tp1, dx, dym, dt)
                 pgf(du, dv, p, p_center, height, t, spa, dxc, dym)
                 advecv(u, v, du, dv, p, dxc, dym)
-                #coriolis(u, v, du, dv, latc)
+                coriolis(u, v, du, dv, latc)
                 #friction(u, v, du, dv, p, spa, dxc, dym, dt)
                 sdrag(u, v, p, p_center, t, dt)
                 dynam(u, v, up1, vp1, du, dv, timestep)
@@ -586,8 +586,8 @@ def main():
 
 
         #image.set_data(((u ** 2 + v ** 2) ** (1/2)))
-        image.set_data(tracer)
-        #image.set_data(p)
+        #image.set_data(tracer)
+        image.set_data(p)
         fig.canvas.draw()
         #plt.draw()
         #time.sleep(5)
