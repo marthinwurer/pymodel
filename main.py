@@ -9,31 +9,8 @@ from math import *
 from matplotlib import animation
 import time
 import traceback
+from constants import *
 
-radius = 6371000.0
-#radius = 637100.0
-gravity = 9.8
-R_dry = 287.1
-cp_dry = 1004.0
-kappa = 0.286
-ptop = 10.0 # the pressure at the top of the atmosphere
-r_rate_earth = 7.292115e-5 # rads/sec, rotation rate of earth (sidereal day)
-#r_rate_earth = 0.0
-coriolis_m = 2 * r_rate_earth # will need to be multiplied by the sin of the latitude
-sigma = [0.5] # proportion of pressure at that layer
-dsig = [1.0] # change from this pressure layer to the one above it
-# whooo globals
-numx = 36
-numy = 24
-lay = 0
-#numx = 72
-#numy = 36
-#numx = 360
-#numy = 180
-timestep = 900.0
-#timestep = 120.0
-#torroid = True
-torroid = False
 
 
 
@@ -48,16 +25,13 @@ def dynam(u, v, un, vn, du, dv, dt):
 def aflux(u, v, p, pu, pv):
     for y in range(-1,numy - 1): # don't do the last row, north-south there should be zero
         for x in range(-1, numx - 1):
-            #maxu = max(maxu, u[y][x])
-            #minu = min(minu, u[y][x])
-            pu[y][x] = (u[y-1][x] + u[y][x]) * (p[y][x] + p[y][x+1]) / 4
-            pv[y][x] = (v[y][x-1] + v[y][x]) * (p[y][x] + p[y+1][x]) / 4
-
             if y == -1:
                 u[y][x] = 0
                 v[y][x] = 0
                 pv[y][x] = 0
 
+            pu[y][x] = (u[y-1][x] + u[y][x]) * (p[y][x] + p[y][x+1]) / 4
+            pv[y][x] = (v[y][x-1] + v[y][x]) * (p[y][x] + p[y+1][x]) / 4
 
 def advecm(p, pu, pv, p_next, convergence, dx, dym, dt):
     # find the convergence and change the pressure
@@ -116,6 +90,38 @@ def advectracer(pu, pv, tracer, tracer_next, dx, dym, dt):
             tracer_next[y][x-1] += tr_west
             tracer_next[y][x+1] += tr_east
 
+def advectemp(pu, pv, t, tp1, p,  dx, dym, dt):
+    tp1.fill(0.0)
+    # advect the tracer
+    for y in range(-1, numy - 1): 
+        for x in range(-1, numx - 1):
+            p_east = (p[y][x] + p[y][x+1]) / 2
+            p_west = (p[y][x] + p[y][x+1]) / 2
+            p_north = (p[y][x] + p[y][x+1]) / 2
+            p_south = (p[y][x] + p[y][x+1]) / 2
+            # compute the amount moved in each direction.
+            t_east = pu[y][x] * t[y][x] / dx[y] * dt / p_east
+            t_west = -pu[y][x-1] * t[y][x] / dx[y] * dt / p_west
+            t_north = -pv[y][x] * t[y][x] / dx[y] * dt / p_north
+            t_south = pv[y-1][x] * t[y][x] / dx[y] * dt / p_south
+
+            # make sure that you only do the ones that are positive
+            # and make sure that you only move 1/4 of the tracer in any direction
+            maxmove = t[y][x] / 4
+            t_east = max(0, min(t_east, maxmove))
+            t_west = max(0, min(t_west, maxmove))
+            t_north = max(0, min(t_north, maxmove))
+            t_south = max(0, min(t_south, maxmove))
+
+            # compute how much will be left
+            left = t[y][x] - t_east - t_west - t_north - t_south
+
+            # move the tracer
+            tp1[y][x] += left
+            tp1[y-1][x] += t_north
+            tp1[y+1][x] += t_south
+            tp1[y][x-1] += t_west
+            tp1[y][x+1] += t_east
 
 def pgf(du, dv, p, p_c, h, t, spa, dxc, dym):
     ## compute spa now
@@ -386,8 +392,8 @@ def main():
     #for i in range(numx):
     #    height[0][i] = 2000
     #    height[-1][i] = 2000
-    #for i in range(numy):
-    #    height[i][0] = 2000
+    for i in range(numy):
+        height[i][i] = 200
 
     # make an initial push
     #u[numy // 3, numx // 2] = -10
@@ -422,9 +428,9 @@ def main():
     #((u ** 2 + v ** 2) ** (1/2))
 
     fig,ax = plt.subplots(1,1)
-    #image = ax.imshow(((u ** 2 + v ** 2) ** (1/2)), cmap='gray')
-    #image = ax.imshow(tracer_p1, cmap='gray')
-    image = ax.imshow(pp1, cmap='gray')
+    # image = ax.imshow(((u ** 2 + v ** 2) ** (1/2)), cmap='gray')
+    image = ax.imshow(tracer_p1, cmap='gray')
+    # image = ax.imshow(pp1, cmap='gray')
     fig.canvas.draw()
     plt.show(block=False)
     i = -1
@@ -450,7 +456,7 @@ def main():
                 aflux(u, v, p, pu, pv)
                 advecm(p, pu, pv, pp1, convergence, dx, dym, dt)
                 advectracer(pu, pv, tracer, tracer_p1, dx, dym, dt)
-                #advectracer(pu, pv, t, tp1, dx, dym, dt)
+                advectemp(pu, pv, t, tp1, p, dx, dym, dt)
                 pgf(du, dv, p, p_center, height, t, spa, dxc, dym)
                 advecv(u, v, du, dv, p, dxc, dym)
                 coriolis(u, v, du, dv, latc)
@@ -521,7 +527,7 @@ def main():
                 tracer, tracer_p1 = tracer_p1, tracer
 
 
-            else:
+            elif int_type == 3:
                 # DOUBLE backward euler
                 dtthird = dt * 2/3
                 aflux(u, v, p, pu, pv)
@@ -559,6 +565,11 @@ def main():
                 p, pp1 = pp1, p
                 tracer, tracer_p1 = tracer_p1, tracer
 
+            else:
+                # Iterative backwards euler
+                iters = 20
+
+
             # do crappy evaporation and precipitation
             for y in range(numy): 
                 for x in range(numx ):
@@ -585,9 +596,9 @@ def main():
         print(np.amin(p), np.amax(p), np.amax(spa))
 
 
-        #image.set_data(((u ** 2 + v ** 2) ** (1/2)))
-        #image.set_data(tracer)
-        image.set_data(p)
+        # image.set_data(((u ** 2 + v ** 2) ** (1/2)))
+        image.set_data(tracer)
+        # image.set_data(p)
         fig.canvas.draw()
         #plt.draw()
         #time.sleep(5)
