@@ -9,6 +9,8 @@ from math import *
 from matplotlib import animation
 import time
 import traceback
+
+from advect_temp import advectemp
 from constants import *
 
 
@@ -90,38 +92,6 @@ def advectracer(pu, pv, tracer, tracer_next, dx, dym, dt):
             tracer_next[y][x-1] += tr_west
             tracer_next[y][x+1] += tr_east
 
-def advectemp(pu, pv, t, tp1, p,  dx, dym, dt):
-    tp1.fill(0.0)
-    # advect the tracer
-    for y in range(-1, numy - 1): 
-        for x in range(-1, numx - 1):
-            p_east = (p[y][x] + p[y][x+1]) / 2
-            p_west = (p[y][x] + p[y][x+1]) / 2
-            p_north = (p[y][x] + p[y][x+1]) / 2
-            p_south = (p[y][x] + p[y][x+1]) / 2
-            # compute the amount moved in each direction.
-            t_east = pu[y][x] * t[y][x] / dx[y] * dt / p_east
-            t_west = -pu[y][x-1] * t[y][x] / dx[y] * dt / p_west
-            t_north = -pv[y][x] * t[y][x] / dx[y] * dt / p_north
-            t_south = pv[y-1][x] * t[y][x] / dx[y] * dt / p_south
-
-            # make sure that you only do the ones that are positive
-            # and make sure that you only move 1/4 of the tracer in any direction
-            maxmove = t[y][x] / 4
-            t_east = max(0, min(t_east, maxmove))
-            t_west = max(0, min(t_west, maxmove))
-            t_north = max(0, min(t_north, maxmove))
-            t_south = max(0, min(t_south, maxmove))
-
-            # compute how much will be left
-            left = t[y][x] - t_east - t_west - t_north - t_south
-
-            # move the tracer
-            tp1[y][x] += left
-            tp1[y-1][x] += t_north
-            tp1[y+1][x] += t_south
-            tp1[y][x-1] += t_west
-            tp1[y][x+1] += t_east
 
 def pgf(du, dv, p, p_c, h, t, spa, dxc, dym):
     ## compute spa now
@@ -354,7 +324,6 @@ def main():
             lat[ii] = lat_cur
             dx[ii] = cos(lat_cur) * dxe * radius
         #    print(lat_cur/pi * 180, dx[ii], dx[ii])
-        dx[-1] = dx[1] # prevent explosions
     else:
         # torroid
         for ii in range(numy):
