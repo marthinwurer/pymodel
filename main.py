@@ -361,13 +361,13 @@ def main():
     #for i in range(numx):
     #    height[0][i] = 2000
     #    height[-1][i] = 2000
-    for i in range(numy):
-        height[i][i] = 200
+    # for i in range(numy):
+    #     height[i][i] = 200
 
     # make an initial push
     #u[numy // 3, numx // 2] = -10
     #u[numy // 3, numx // 3] = 10
-    u[numy // 3 * 2, numx // 3] = -10
+    # u[numy // 3 * 2, numx // 3] = -10
     v[numy // 3, numx // 2] = 10
 
     #for i in range(numx):
@@ -398,12 +398,14 @@ def main():
 
     fig,ax = plt.subplots(1,1)
     # image = ax.imshow(((u ** 2 + v ** 2) ** (1/2)), cmap='gray')
-    image = ax.imshow(tracer_p1, cmap='gray')
-    # image = ax.imshow(pp1, cmap='gray')
+    # image = ax.imshow(tracer_p1, cmap='gray')
+    image = ax.imshow(pp1, cmap='gray')
     fig.canvas.draw()
     plt.show(block=False)
+    # plt.show()
     i = -1
     while True:
+        time.sleep(1)
         i+=1
         print()
         print()
@@ -425,7 +427,7 @@ def main():
                 aflux(u, v, p, pu, pv)
                 advecm(p, pu, pv, pp1, convergence, dx, dym, dt)
                 advectracer(pu, pv, tracer, tracer_p1, dx, dym, dt)
-                advectemp(pu, pv, t, tp1, p, dx, dym, dt)
+                tp1 = advectemp(pu, pv, t, tp1, p, pp1, dx, dym, dt)
                 pgf(du, dv, p, p_center, height, t, spa, dxc, dym)
                 advecv(u, v, du, dv, p, dxc, dym)
                 coriolis(u, v, du, dv, latc)
@@ -566,8 +568,8 @@ def main():
 
 
         # image.set_data(((u ** 2 + v ** 2) ** (1/2)))
-        image.set_data(tracer)
-        # image.set_data(p)
+        # image.set_data(tracer)
+        image.set_data(p)
         fig.canvas.draw()
         #plt.draw()
         #time.sleep(5)
