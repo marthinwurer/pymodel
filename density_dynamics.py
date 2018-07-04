@@ -18,12 +18,14 @@ class World:
         self.layers = 1 # the number of layers in the model
         self.x_cells = x_cells # in columns
         self.y_cells = y_cells # in columns
-        self.u = np.zeros((y_cells, x_cells)) # eastward velocity: m/s
+        self.dim = (y_cells, x_cells)
+        self.u = np.zeros(self.dim) # eastward velocity: m/s
         self.v = np.zeros((y_cells, x_cells)) # southward velocity: m/s
         self.p = np.full((y_cells, x_cells), constants.air_density) # density: kg/m^3 # from wikipedia for the
         self.t = np.full((y_cells, x_cells), 273.15) # potential temperature: Kelvin
         self.m = np.zeros((y_cells, x_cells)) # moisture: kg/m^3
         self.height = np.zeros((y_cells, x_cells)) # geopotential height: average land height in the column
+        self.g_height = np.zeros(self.dim)
         self.geometry = Geometry(x_cells, y_cells, constants.radius)
 
 
@@ -34,4 +36,23 @@ class World:
         #---------------------------------
         #
         return self.p * constants.R_dry * self.t / 100 # / 100 turns into hPa
+
+    def geopotential(self):
+        geo_north = np.zeros(self.dim)
+        geo_south = np.zeros(self.dim)
+        geo_east = np.zeros(self.dim)
+        geo_west = np.zeros(self.dim)
+        p = self.p
+
+        g = self.height * constants.gravity
+
+        for yy in range(-1, self.y_cells - 1):
+            for xx in range(-1, self.x_cells - 1):
+                geo_north[yy, xx] = (p[yy][xx] + p[yy-1][xx]) / 2 * (g[yy][xx] - g[yy-1][xx]) / self.geometry.dym
+                geo_south[yy, xx] = (p[yy][xx] + p[yy+1][xx]) / 2 * (g[yy][xx] - g[yy+1][xx]) / self.geometry.dym
+                geo_east[yy, xx] = (p[yy][xx] + p[yy][xx+1]) / 2 * (g[yy][xx] - g[yy][xx+1]) / self.geometry.dym
+                geo_west[yy, xx] = (p[yy][xx] + p[yy][xx-1]) / 2 * (g[yy][xx] - g[yy][xx-1]) / self.geometry.dym
+
+        return (geo_north, geo_south, geo_east, geo_west)
+
 

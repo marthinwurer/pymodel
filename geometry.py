@@ -31,6 +31,7 @@ class Geometry:
         dye = pi / y_cells
         # find it in meters
         dym = dye * radius
+        self.dym = dym
 
         # we want to find the differences between the centers as well
         # as the SE corners, so two different arrays are needed
