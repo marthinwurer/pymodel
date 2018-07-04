@@ -1,7 +1,7 @@
 
-radius = 6371000.0
+radius = 6371000.0 # radius of the earth, in meters
 #radius = 637100.0
-gravity = 9.8
+gravity = 9.8 # in m/s^2
 R_dry = 287.1
 cp_dry = 1004.0
 kappa = 0.286
@@ -26,5 +26,7 @@ timestep = 900.0
 # timestep = 20.0
 # torroid = True
 torroid = False
+
+air_density = 1.2754e-3 # g/m^3 : From wikipedia for dry air at STP : https://en.wikipedia.org/wiki/Density_of_air
 
 
