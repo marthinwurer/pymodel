@@ -20,7 +20,7 @@ class World:
         self.y_cells = y_cells # in columns
         self.u = np.zeros((y_cells, x_cells)) # eastward velocity: m/s
         self.v = np.zeros((y_cells, x_cells)) # southward velocity: m/s
-        self.p = np.full((y_cells, x_cells), constants.air_density) # density: g/m^3 # from wikipedia for the
+        self.p = np.full((y_cells, x_cells), constants.air_density) # density: kg/m^3 # from wikipedia for the
         self.t = np.full((y_cells, x_cells), 273.15) # potential temperature: Kelvin
         self.m = np.zeros((y_cells, x_cells)) # moisture: kg/m^3
         self.height = np.zeros((y_cells, x_cells)) # geopotential height: average land height in the column
@@ -30,5 +30,8 @@ class World:
 
 
     def ideal_gas_pressure(self):
-        return self.p * constants.R_dry * self.t
+        # kg
+        #---------------------------------
+        #
+        return self.p * constants.R_dry * self.t / 100 # / 100 turns into hPa
 

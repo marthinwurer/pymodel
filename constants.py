@@ -27,6 +27,6 @@ timestep = 900.0
 # torroid = True
 torroid = False
 
-air_density = 1.2754e-3 # g/m^3 : From wikipedia for dry air at STP : https://en.wikipedia.org/wiki/Density_of_air
+air_density = 1.2754 # kg/m^3 : From wikipedia for dry air at STP : https://en.wikipedia.org/wiki/Density_of_air
 
 
