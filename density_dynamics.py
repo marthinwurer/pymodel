@@ -22,7 +22,7 @@ class World:
         self.v = np.zeros((y_cells, x_cells)) # southward velocity: m/s
         self.p = np.full((y_cells, x_cells), constants.air_density) # density: g/m^3 # from wikipedia for the
         self.t = np.full((y_cells, x_cells), 273.15) # potential temperature: Kelvin
-        self.m = np.zeros((y_cells, x_cells)) # moisture: g/m^3
+        self.m = np.zeros((y_cells, x_cells)) # moisture: kg/m^3
         self.height = np.zeros((y_cells, x_cells)) # geopotential height: average land height in the column
         self.geometry = Geometry(x_cells, y_cells, constants.radius)
 

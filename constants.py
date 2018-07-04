@@ -2,7 +2,7 @@
 radius = 6371000.0 # radius of the earth, in meters
 #radius = 637100.0
 gravity = 9.8 # in m/s^2
-R_dry = 287.1
+R_dry = 287.1 # J/(kg*K) = (kg*m^2/s^2)/(kg*K)
 cp_dry = 1004.0
 kappa = 0.286
 ptop = 10.0 # the pressure at the top of the atmosphere
