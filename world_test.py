@@ -1,4 +1,4 @@
-from density_dynamics import World
+from world import World
 
 w = World(3, 3, toy=True)
 
