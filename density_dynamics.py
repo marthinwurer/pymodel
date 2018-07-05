@@ -2,6 +2,7 @@
 import numpy as np
 import constants
 from geometry import Geometry
+from utilities import gradient
 
 
 class World:
@@ -13,7 +14,7 @@ class World:
     Values stored are the cellular average.
     """
 
-    def __init__(self, x_cells: int, y_cells: int):
+    def __init__(self, y_cells: int, x_cells: int, toy:bool=False):
         self.cell_height = 33000 # the top boundary of the top cell in a column. About 1/3 of the atmosphere.
         self.layers = 1 # the number of layers in the model
         self.x_cells = x_cells # in columns
@@ -26,7 +27,11 @@ class World:
         self.m = np.zeros((y_cells, x_cells)) # moisture: kg/m^3
         self.height = np.zeros((y_cells, x_cells)) # geopotential height: average land height in the column
         self.g_height = np.zeros(self.dim)
-        self.geometry = Geometry(x_cells, y_cells, constants.radius)
+
+        if not toy:
+            self.geometry = Geometry(x_cells, y_cells, constants.radius)
+        else:
+            self.geometry = Geometry(x_cells, y_cells, constants.radius, torroid=True, toy=True)
 
 
 
@@ -45,14 +50,17 @@ class World:
         p = self.p
 
         g = self.height * constants.gravity
+        dx = self.geometry.dym
 
-        for yy in range(-1, self.y_cells - 1):
-            for xx in range(-1, self.x_cells - 1):
-                geo_north[yy, xx] = (p[yy][xx] + p[yy-1][xx]) / 2 * (g[yy][xx] - g[yy-1][xx]) / self.geometry.dym
-                geo_south[yy, xx] = (p[yy][xx] + p[yy+1][xx]) / 2 * (g[yy][xx] - g[yy+1][xx]) / self.geometry.dym
-                geo_east[yy, xx] = (p[yy][xx] + p[yy][xx+1]) / 2 * (g[yy][xx] - g[yy][xx+1]) / self.geometry.dym
-                geo_west[yy, xx] = (p[yy][xx] + p[yy][xx-1]) / 2 * (g[yy][xx] - g[yy][xx-1]) / self.geometry.dym
+        g_grad = gradient(g, dx)
 
-        return (geo_north, geo_south, geo_east, geo_west)
+        out = [grad * p for grad in g_grad]
+
+        return out
+
+    def pgf(self):
+        pass
+
+
 
 

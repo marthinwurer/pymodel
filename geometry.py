@@ -10,7 +10,8 @@ class Geometry:
     This class stores the geometrical data for a world
     """
 
-    def __init__(self, x_cells: int, y_cells: int, radius: float, torroid: bool=False):
+    def __init__(self, x_cells: int, y_cells: int, radius: float, torroid: bool=False,
+                 toy:bool=False, override: float=100000.0):
         self.radius = radius
         self.torroid = torroid
         self.x_cells = x_cells
@@ -22,6 +23,10 @@ class Geometry:
         self.lat = np.zeros(y_cells)
         self.latc = np.zeros(y_cells)
 
+        if toy:
+            self.dym = override
+
+
 
         # calculate geometry
         # find the radians for each height difference: 180deg = pi rads
@@ -32,6 +37,11 @@ class Geometry:
         # find it in meters
         dym = dye * radius
         self.dym = dym
+
+        if toy:
+            self.dym = override
+            self.dx = np.full((y_cells,), override)
+            return
 
         # we want to find the differences between the centers as well
         # as the SE corners, so two different arrays are needed
