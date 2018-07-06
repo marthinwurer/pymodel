@@ -43,10 +43,6 @@ class World:
         return self.p * constants.R_dry * self.t / 100 # / 100 turns into hPa
 
     def geopotential(self):
-        geo_north = np.zeros(self.dim)
-        geo_south = np.zeros(self.dim)
-        geo_east = np.zeros(self.dim)
-        geo_west = np.zeros(self.dim)
         p = self.p
 
         g = self.height * constants.gravity
