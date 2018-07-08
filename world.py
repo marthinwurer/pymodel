@@ -2,7 +2,7 @@
 import numpy as np
 import constants
 from geometry import Geometry
-from utilities import gradient
+from utilities import gradient, edge_averages
 
 
 class World:
@@ -22,8 +22,9 @@ class World:
         self.dim = (y_cells, x_cells)
         self.u = np.zeros(self.dim) # eastward velocity: m/s
         self.v = np.zeros((y_cells, x_cells)) # southward velocity: m/s
-        self.p = np.full((y_cells, x_cells), constants.air_density) # density: kg/m^3 # from wikipedia for the
-        self.t = np.full((y_cells, x_cells), 273.15) # potential temperature: Kelvin
+        # self.p = np.full((y_cells, x_cells), constants.air_density) # density: kg/m^3 # from wikipedia for the
+        self.p = np.full((y_cells, x_cells), constants.air_pressure) # pressure: Pa = kg/(m*s^2)
+        self.t = np.full((y_cells, x_cells), 273.15) # potential temperature: Kelvin at 1000 hPa
         self.m = np.zeros((y_cells, x_cells)) # moisture: kg/m^3
         self.height = np.zeros((y_cells, x_cells)) # geopotential height: average land height in the column
         self.g_height = np.zeros(self.dim)
@@ -53,8 +54,26 @@ class World:
 
         return g_grad * p
 
+    def temperature(self):
+        return self.t / ((constants.reference_pressure / self.p) ** constants.kappa)
+
+    def density(self):
+        """
+        calculates the density of the air at the center of the cells from the
+        potential temperature and the pressure.
+        Units: K
+        """
+        return self.p / (constants.R_dry * self.temperature())
+
     def pgf(self):
-        pass
+        pressure_gradient = gradient(self.p)
+        p_edge = edge_averages(self.p)
+        d_edge = edge_averages(self.density())
+
+        scalar = (p_edge/d_edge)
+
+        return pressure_gradient * scalar
+
 
 
 

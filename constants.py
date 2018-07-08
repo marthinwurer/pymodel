@@ -27,6 +27,9 @@ timestep = 900.0
 # torroid = True
 torroid = False
 
+reference_pressure = 100000 # Pa . Reference pressure for potential temperature calculation
+air_pressure = 101325 # Pa - Sea level standard atmospheric pressure in pascals
+                      # pa = kg/(m*s^2)
 air_density = 1.2754 # kg/m^3 : From wikipedia for dry air at STP : https://en.wikipedia.org/wiki/Density_of_air
 
 

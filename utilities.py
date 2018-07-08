@@ -44,8 +44,8 @@ def edge_averages(a: np.ndarray):
     east = np.zeros(a.shape)
     for yy in range(-1, a.shape[0] - 1):
         for xx in range(-1, a.shape[1] - 1):
-            south[yy, xx] = (a[yy][xx] - a[yy+1][xx])
-            east[yy, xx] = (a[yy][xx] - a[yy][xx+1])
+            south[yy, xx] = (a[yy][xx] + a[yy+1][xx]) / 2
+            east[yy, xx] = (a[yy][xx] + a[yy][xx+1]) / 2
 
     return np.asarray([east, south])
 
@@ -57,7 +57,14 @@ def gradient_c(a: np.ndarray, dx: float=1.0):
         dx:
     Returns:
     """
-    return edge_averages(a) / dx
+    south = np.zeros(a.shape)
+    east = np.zeros(a.shape)
+    for yy in range(-1, a.shape[0] - 1):
+        for xx in range(-1, a.shape[1] - 1):
+            south[yy, xx] = (a[yy][xx] - a[yy+1][xx])
+            east[yy, xx] = (a[yy][xx] - a[yy][xx+1])
+
+    return np.asarray([east, south]) / dx
 
 def gradient_a(a: np.ndarray, dx: float=1.0):
     """
