@@ -50,9 +50,8 @@ class World:
 
         g_grad = gradient(g, dx)
 
-        out = [grad * p for grad in g_grad]
 
-        return out
+        return g_grad * p
 
     def pgf(self):
         pass
