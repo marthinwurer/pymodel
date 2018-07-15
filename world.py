@@ -2,7 +2,7 @@
 import numpy as np
 import constants
 from geometry import Geometry
-from utilities import gradient, edge_averages
+from utilities import gradient, edge_averages, divergence, center_averages
 
 
 class World:
@@ -28,6 +28,11 @@ class World:
         self.m = np.zeros((y_cells, x_cells)) # moisture: kg/m^3
         self.height = np.zeros((y_cells, x_cells)) # geopotential height: average land height in the column
         self.g_height = np.zeros(self.dim)
+        # The values at the next timestep
+        self.p_next = np.zeros(self.dim)
+        self.t_next = np.zeros(self.dim)
+        self.u_next = np.zeros(self.dim)
+        self.v_next = np.zeros(self.dim)
 
         if not toy:
             self.geometry = Geometry(x_cells, y_cells, constants.radius)
@@ -73,6 +78,76 @@ class World:
         scalar = (p_edge/d_edge)
 
         return pressure_gradient * scalar
+
+    def flux(self):
+        u_edge = edge_averages(self.u)
+        v_edge = edge_averages(self.v)
+        p_edge = edge_averages(self.p)
+        pu_edge = (p_edge * u_edge)[0] # just want the flux at east edge
+        pv_edge = (p_edge * v_edge)[1] # just want the flux at south edge
+
+        return np.asarray([pu_edge, pv_edge])
+
+    
+    def advect_velocity(self):
+        u_edge = edge_averages(self.u)
+        v_edge = edge_averages(self.v)
+        p_edge = edge_averages(self.p)
+        pu_edge = (p_edge * u_edge)[0] # just want the flux at east edge
+        pv_edge = (p_edge * v_edge)[1] # just want the flux at south edge
+
+        pu_center = self.p * self.u
+        pv_center = self.p * self.v
+
+        del_dot_pu = divergence(self.flux())
+
+        u_flux_east = pu_edge * u_edge[0]
+        v_flux_east = pu_edge * v_edge[0]
+        u_flux_south = pv_edge * u_edge[1]
+        v_flux_south = pv_edge * v_edge[1]
+
+        u_new = del_dot_pu
+
+
+
+
+
+        return u_new
+
+    def update_pressure(self):
+        self.p_next = self.p + divergence(self.flux()) * constants.timestep / self.geometry.dym**2
+        return self.p_next
+
+
+    def update_velocity(self):
+        advection = self.advect_velocity()
+        # advection = np.zeros(self.p.shape)
+        # print(advection)
+        pgf = center_averages(self.pgf())# * self.geometry.dym
+        print("pgf")
+        print(pgf)
+        geo = center_averages(self.geopotential()) #* self.geometry.dym
+        print("geo")
+        print(geo)
+        dU = (advection + pgf + geo) * constants.timestep / (self.p ) / ( self.geometry.dym**2)
+        # dU = (advection + pgf + geo) * constants.timestep / (self.p )
+        print("dU")
+        print(dU)
+        self.u_next = self.u + dU[0]
+        self.v_next = self.v + dU[1]
+        return dU
+
+    def do_timestep(self):
+        self.update_velocity()
+        self.update_pressure()
+
+        self.u = self.u_next
+        self.v = self.v_next
+        self.p = self.p_next
+
+        return self.p
+
+
 
 
 

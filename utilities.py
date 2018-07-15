@@ -38,6 +38,7 @@ def edge_averages(a: np.ndarray):
         a:
 
     Returns:
+        [east, south]
 
     """
     south = np.zeros(a.shape)
@@ -110,16 +111,17 @@ def divergence_c(u: np.ndarray, dx: float=1.0):
             west = grad_u[yy][xx-1]
             #     west                     east             north              south
             # div[yy][xx] = grad_u[yy][xx-1] - grad_u[yy][xx] + grad_v[yy-1][xx] - grad_v[yy][xx]
-            div[yy][xx] = west - east + north - south
+            div[yy][xx] = (west - east + north - south) / dx
 
     return div
 
 def divergence_a(u: np.ndarray, dx: float=1.0):
-    div = np.zeros(u.shape[1:])
+    shape = u.shape[1:]
+    div = np.zeros(shape)
     grad_u = u[0]
     grad_v = u[1]
-    for yy in range(-1, u.shape[0] - 1):
-        for xx in range(-1, u.shape[1] - 1):
+    for yy in range(-1, shape[0] - 1):
+        for xx in range(-1, shape[1] - 1):
             north = grad_v[yy-1][xx]
             south = grad_v[yy+1][xx]
             east = grad_u[yy][xx+1]
@@ -130,5 +132,16 @@ def divergence_a(u: np.ndarray, dx: float=1.0):
 divergence = divergence_c
 
 
+
+def center_averages(a: np.ndarray):
+    shape = a.shape[1:]
+    u_center = np.zeros(shape)
+    v_center = np.zeros(shape)
+    for yy in range(-1, shape[0] - 1):
+        for xx in range(-1, shape[1] - 1):
+            u_center[yy][xx] = (a[0][yy][xx] + a[0][yy][xx-1]) / 2
+            v_center[yy][xx] = (a[1][yy][xx] + a[1][yy-1][xx]) / 2
+                              # a[1][yy][xx] + a[1][yy-1][xx]) / 4
+    return np.asarray([u_center, v_center])
 
 
